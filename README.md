@@ -6,7 +6,7 @@ The project demonstrates a complete production-style workflow using **React, Nod
 
 ## 🚀 Live Demo
 
-* **Frontend:** https://messmate-frontend-rwaw.onrender.com
+* **Frontend:** https://messmate-frontend.netlify.app/
 * **Backend API:** https://messmate-backend-ntvv.onrender.com
 
 ## ✨ Features

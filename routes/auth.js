@@ -7,7 +7,15 @@ const User = require("../models/User");
 const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET;
+const rateLimit = require("express-rate-limit");
 
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: {
+    message: "Too many login attempts. Please try again later."
+  }
+});
 
 // ========================================
 // POST /auth/register
@@ -61,7 +69,7 @@ router.post("/register", async (req, res) => {
 // Login existing user
 // ========================================
 
-router.post("/login", async (req, res) => {
+router.post("/login", loginLimiter, async (req, res) => {
   const { username, password } = req.body;
 
   if (!username || !password) {

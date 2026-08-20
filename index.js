@@ -12,6 +12,10 @@ const profileRoutes = require("./routes/profile");
 const authMiddleware = require("./middleware/authMiddleware");
 const logger = require("./logger");
 
+const rateLimit = require("express-rate-limit");
+const compression = require("compression");
+const xss = require("xss-clean");
+
 const app = express();
 
 const PORT = process.env.PORT || 3000;
@@ -54,6 +58,34 @@ app.use(morgan("dev"));
 
 app.use(express.json());
 
+// Logging only in development
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan("dev"));
+}
+
+// ========================================
+// Security & Performance Middleware
+// ========================================
+
+// Compress API responses
+app.use(compression());
+
+
+// Prevent XSS attacks
+app.use(xss());
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: {
+    message: "Too many requests from this IP, please try again later."
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+app.use(limiter);
 
 // ========================================
 // ROOT ROUTE

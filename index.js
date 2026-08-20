@@ -14,7 +14,6 @@ const logger = require("./logger");
 
 const rateLimit = require("express-rate-limit");
 const compression = require("compression");
-const xss = require("xss-clean");
 
 const app = express();
 
@@ -70,9 +69,6 @@ if (process.env.NODE_ENV === "development") {
 // Compress API responses
 app.use(compression());
 
-
-// Prevent XSS attacks
-app.use(xss());
 
 // Rate limiting
 const limiter = rateLimit({

@@ -3,114 +3,172 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const morgan = require("morgan");
+const helmet = require("helmet");
 
 const messRoutes = require("./routes/messRoutes");
 const authRoutes = require("./routes/auth");
 const profileRoutes = require("./routes/profile");
+const authMiddleware = require("./middleware/authMiddleware");
+const logger = require("./logger");
 
 const app = express();
-
-app.use(
-  cors({
-    origin: [
-        "http://localhost:3001",
-        "https://messmate-frontend.netlify.app"
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
 
 const PORT = process.env.PORT || 3000;
 
 
 // ========================================
-// Middleware
+// SECURITY
+// ========================================
+
+app.use(helmet());
+
+
+// ========================================
+// CORS
+// ========================================
+
+app.use(
+  cors({
+    origin: [
+      "http://localhost:3001",
+      "http://localhost:3000",
+      "https://messmate-frontend.netlify.app"
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+  })
+);
+
+
+// ========================================
+// REQUEST LOGGING
+// ========================================
+
+app.use(morgan("dev"));
+
+
+// ========================================
+// BODY PARSER
 // ========================================
 
 app.use(express.json());
 
 
 // ========================================
-// Root Route
+// ROOT ROUTE
 // ========================================
 
 app.get("/", (req, res) => {
-  res.send(
+  res.status(200).send(
     "Welcome to MessMate API - powered by Express + MongoDB!"
   );
 });
 
 
 // ========================================
-// Health Check
+// HEALTH CHECK
 // ========================================
 
 app.get("/health", (req, res) => {
   res.status(200).json({
-    status: "ok"
+    status: "ok",
+    environment: process.env.NODE_ENV || "development"
   });
 });
 
 
 // ========================================
-// Authentication Routes
+// TEST ERROR ROUTE
+// ========================================
+
+app.get("/crash", (req, res, next) => {
+  try {
+    throw new Error("Something went wrong");
+  } catch (error) {
+    next(error);
+  }
+});
+
+
+// ========================================
+// AUTHENTICATION ROUTES
 // ========================================
 
 app.use("/auth", authRoutes);
+
+
+// ========================================
+// PROFILE ROUTES
+// ========================================
+
 app.use("/profile", profileRoutes);
 
 
-// ========================
-// Protected Mess Routes
-// ========================
+// ========================================
+// PROTECTED MESS ROUTES
+// ========================================
 
-const authMiddleware = require("./middleware/authMiddleware");
 app.use("/messes", authMiddleware, messRoutes);
 
 
 // ========================================
-// 404 Handler
+// 404 HANDLER
 // ========================================
 
 app.use((req, res) => {
   res.status(404).json({
+    error: true,
     message: "Route not found"
   });
 });
 
 
 // ========================================
-// Global Error Handler
+// GLOBAL ERROR HANDLER
 // ========================================
 
 app.use((err, req, res, next) => {
-  console.error(err.stack);
 
-  res.status(500).json({
-    message: "Unexpected server error"
+  logger.error({
+    message: err.message,
+    stack: err.stack,
+    method: req.method,
+    url: req.originalUrl
+  });
+
+  res.status(err.statusCode || 500).json({
+    error: true,
+    message:
+      err.message || "Internal Server Error"
   });
 });
 
 
 // ========================================
-// MongoDB Connection
+// MONGODB CONNECTION
 // ========================================
 
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
-    console.log("Connected to MongoDB");
+
+    logger.info("Connected to MongoDB");
 
     app.listen(PORT, () => {
-      console.log(
-        `Server is running at http://localhost:${PORT}`
+
+      logger.info(
+        `Server running at http://localhost:${PORT}`
       );
+
     });
+
   })
   .catch((error) => {
-    console.error(
-      "MongoDB connection failed:",
-      error.message
-    );
+
+    logger.error({
+      message: "MongoDB connection failed",
+      error: error.message
+    });
+
   });
